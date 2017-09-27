@@ -1,7 +1,7 @@
 function Add-ChocoInternalizedPackage {
 <#
 .SYNOPSIS
-Recompiles new Chocolatey packages to internal feed when new packages are released. This should be used on a test machine that has all of the packages that you want to recompile from the Chocolatey public feed.
+Recompiles new Chocolatey packages to internal feed when new packages are released. This should be used on a test machine that has all of the packages that you want to recompile from the Chocolatey public feed. Updated packages and their dependencies are recompiled.
 
 .PARAMETER RepositoryURL
 Your internal NuGet repository URL for pushing packages to. For Example https://yourfeed/chocolatey/
@@ -23,18 +23,18 @@ Description
 This will remote the contents of c:\Example, get a list of outdated Chocolatey packages on the local machine, recompile them and then push to 'https://yourfeed/chocolatey/'.
 
 #>
-    param (
-        [Parameter(Mandatory=$true)]
-        [string]$RepositoryURL,
-        [Parameter(Mandatory=$true)]
-        [ValidateScript({Test-Path -Path $_})]
-        [string]$WorkingDirectory,
-        [Parameter(Mandatory=$true)]
-        [ValidateScript({Test-Path -Path $_})]
-        [string]$APIKeyPath,
-        [Parameter(Mandatory=$false)]
-        [switch]$PurgeWorkingDirectory
-    )
+param (
+    [Parameter(Mandatory=$true)]
+    [string]$RepositoryURL,
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({Test-Path -Path $_})]
+    [string]$WorkingDirectory,
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({Test-Path -Path $_})]
+    [string]$APIKeyPath,
+    [Parameter(Mandatory=$false)]
+    [switch]$PurgeWorkingDirectory
+)
 
     #Convert API Key Path for use in choco push
     $PushAPIKey = Get-Content $APIKeyPath | ConvertTo-SecureString
@@ -66,6 +66,9 @@ This will remote the contents of c:\Example, get a list of outdated Chocolatey p
                 Pinned = $NewPackage.Split('|')[3]
             }
         } 
+        #Write output to host
+        Write-Output "Packages to recompile"
+        $NewPackages
         #If new packages are available then install, internalize, and push to local repository
         Set-Location -Path $WorkingDirectory
         [System.Collections.ArrayList]$Failure = @()
@@ -110,12 +113,12 @@ This will remote the contents of c:\Example, get a list of outdated Chocolatey p
                     if ($LASTEXITCODE -ne 0)
                     {
                         Write-Warning -Message "$DownloadedPackage failed push"
-                        $Failure.Add($DownloadedPackage) | Out-Null
+                        $Failure.Add((Split-Path -Path $DownloadedPackage -Leaf)) | Out-Null
                     }
                     else 
                     {
                        Write-Output "$DownloadedPackage successfully pushed"
-                       $Success.Add($DownloadedPackage) | Out-Null
+                       $Success.Add((Split-Path -Path $DownloadedPackage -Leaf)) | Out-Null
                     }
                 }
             }
