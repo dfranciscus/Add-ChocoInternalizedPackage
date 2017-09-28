@@ -67,8 +67,8 @@ param (
             }
         } 
         #Write output to host
-        Write-Output "Packages to recompile"
-        $NewPackages
+        Write-Output "Packages to internalize"
+        $NewPackages | Out-Host 
         #If new packages are available then install, internalize, and push to local repository
         Set-Location -Path $WorkingDirectory
         [System.Collections.ArrayList]$Failure = @()
@@ -84,8 +84,7 @@ param (
             }
             #Get time to use with choco push
             $DownloadTime = Get-Date
-            Write-Output ("Downloading " + $InstallPackage.Name)
-            choco download $InstallPackage.Name --internalize --no-progress --internalize-all-urls
+            choco download $InstallPackage.Name --internalize --no-progress --internalize-all-urls -r
             if ($LASTEXITCODE -ne 0)
             {
                 Write-Warning ($InstallPackage.Name + ' internalize failed')
@@ -93,7 +92,7 @@ param (
                 Continue
             }
             Write-Output ("Upgrading " + $InstallPackage.Name)
-            choco upgrade $InstallPackage.Name --source=$WorkingDirectory --no-progress -y
+            choco upgrade $InstallPackage.Name --source=$WorkingDirectory --no-progress -r -y
             #If failure detected in output continue to next package
             if ($LASTEXITCODE -ne 0)
             {
@@ -108,8 +107,8 @@ param (
                 $DownloadedPackages = Get-ChildItem -Path $WorkingDirectory | Where-Object {$_.Extension -eq '.nupkg' -AND $_.LastWriteTime -gt $DownloadTime} | Select-Object -ExpandProperty FullName
                 foreach ($DownloadedPackage in $DownloadedPackages) 
                 {
-                    Write-Output ("Pushing " + $DownloadedPackage)
-                    choco push $DownloadedPackage --source=$RepositoryURL -k=$ApiKey
+                sleep -seconds 03
+                    choco push $DownloadedPackage --source=$RepositoryURL --api-key="$ApiKey" --force
                     if ($LASTEXITCODE -ne 0)
                     {
                         Write-Warning -Message "$DownloadedPackage failed push"
@@ -117,8 +116,8 @@ param (
                     }
                     else 
                     {
-                       Write-Output "$DownloadedPackage successfully pushed"
-                       $Success.Add((Split-Path -Path $DownloadedPackage -Leaf)) | Out-Null
+                        Write-Output "$DownloadedPackage successfully pushed"
+                        $Success.Add((Split-Path -Path $DownloadedPackage -Leaf)) | Out-Null
                     }
                 }
             }
@@ -128,6 +127,5 @@ param (
         $Success
         Write-Output "Failed packages:"
         $Failure
-
     }
 }
